@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Spotify Miniplayer Ultimate Unblocker (V5.0 - Final Art Fix)
+// @name         Spotify Miniplayer Ultimate Unblocker (V24 - Hover Effect)
 // @namespace    http://tampermonkey.net/
-// @version      29
-// @description  Restored V5.0 CSS. Hides text via Opacity to keep the Art container expanded and visible.
+// @version      24.0
+// @description  Restores the official "Show on Hover" behavior for controls. Hides Premium text via Opacity. Keeps Art visible.
 // @author       Fahad
 // @match        https://open.spotify.com/*
 // @grant        none
@@ -12,11 +12,10 @@
 (function() {
     'use strict';
 
-    console.log("Spotify Miniplayer: V5.0 Logic + Opacity Fix");
+    console.log("Spotify Miniplayer: Hover Effect Enabled");
 
-    // EXACT CSS FROM V5.0 (No extra "Art" rules that break layout)
     const antiPremiumCSS = `
-        /* 1. FORCE THE PLAYER VISIBLE */
+        /* 1. PLAYER CONTAINER */
         [data-testid="pip-hover-element"],
         #document-pip-main-container {
             display: flex !important;
@@ -30,17 +29,26 @@
             z-index: 1 !important;
         }
 
-        /* 2. FORCE CONTROLS VISIBLE */
+        /* 2. CONTROLS (THE HOVER FIX) */
         .encore-over-media-set,
         [data-testid="document-pip-hover-element"] {
             display: flex !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-            z-index: 99999 !important; /* Force on top */
+            z-index: 99999 !important;
             background: rgba(0,0,0,0.3) !important;
+            
+            /* Start Invisible */
+            opacity: 0 !important;
+            /* Add smooth fade animation */
+            transition: opacity 0.2s ease-in-out !important;
         }
 
-        /* 3. ENSURE RESIZABILITY */
+        /* SHOW CONTROLS WHEN HOVERING THE WINDOW */
+        body:hover .encore-over-media-set,
+        body:hover [data-testid="document-pip-hover-element"] {
+            opacity: 1 !important;
+        }
+
+        /* 3. WINDOW SETUP */
         body {
              display: flex !important;
              flex-direction: column !important;
@@ -49,27 +57,21 @@
         }
     `;
 
-    // JS Janitor
+    // JS JANITOR (Unchanged - Keeps Art alive by using opacity hidden on text)
     function startJanitor(doc) {
         const observer = new MutationObserver((mutations) => {
-            // Find specific text "You discovered a Premium feature"
             const xpath = "//*[contains(text(),'You discovered a Premium feature')]";
             const matchingElement = doc.evaluate(xpath, doc, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
 
             if (matchingElement) {
-                // Traverse up to find the container holding the text/buttons
-                // matchingElement (span) -> div -> div (The wrapper)
+                // Find the wrapper holding the text/buttons
                 const premiumContentBox = matchingElement.closest('div').parentElement;
 
                 if (premiumContentBox) {
-                    // *** THE FIX ***
-                    // We DO NOT use 'display: none'. That collapses the box and kills the art.
-                    // We use 'opacity: 0'. This keeps the box expanded (saving the Art) but makes the text invisible.
-
+                    // Hide via Opacity (Keeps Art Container Expanded)
                     if (premiumContentBox.style.opacity !== '0') {
                         premiumContentBox.style.opacity = '0';
-                        premiumContentBox.style.pointerEvents = 'none'; // Ensure clicks pass through to controls
-                        console.log("Premium text hidden via opacity. Art preserved.");
+                        premiumContentBox.style.pointerEvents = 'none';
                     }
                 }
             }
@@ -83,8 +85,6 @@
         const originalRequestWindow = window.documentPictureInPicture.requestWindow;
 
         window.documentPictureInPicture.requestWindow = async function(options) {
-            console.log("Spotify requested Miniplayer. Intercepting...");
-
             const pipWindow = await originalRequestWindow.call(window.documentPictureInPicture, options);
 
             const style = pipWindow.document.createElement('style');
@@ -95,8 +95,6 @@
 
             return pipWindow;
         };
-    } else {
-        console.log("Document PiP API not supported.");
     }
 
 })();
